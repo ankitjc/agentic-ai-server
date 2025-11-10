@@ -2,11 +2,12 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 import re
-from mangum import Mangum  # adapter for serverless
+from mangum import Mangum  # MUST wrap FastAPI for serverless
 
+# Initialize FastAPI
 app = FastAPI()
 
-# Allow CORS from any origin (optional for Vercel)
+# Allow CORS from all origins
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,12 +16,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- Your helper functions ---
+# Helper functions
 def route_message(message: str) -> str:
     lower = message.lower()
-    if "country" in lower or "countries" in lower or "capital" in lower:
+    if "country" in lower:
         return "COUNTRY"
-    if "ethnicity" in lower or "origin" in lower or "name" in lower:
+    if "ethnicity" in lower or "name" in lower:
         return "ETHNICITY"
     return "UNKNOWN"
 
@@ -33,7 +34,7 @@ def extract_country(message: str) -> str:
 def extract_name(message: str) -> str:
     return message.split()[-1]
 
-# --- Chat endpoint ---
+# Chat endpoint
 @app.post("/chat")
 async def chat_endpoint(req: Request):
     data = await req.json()
@@ -79,5 +80,5 @@ async def chat_endpoint(req: Request):
 
     return {"response": response_text}
 
-# --- Wrap with Mangum for Vercel ---
+# --- Wrap FastAPI app for serverless Vercel ---
 handler = Mangum(app)
