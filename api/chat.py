@@ -2,12 +2,10 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 import re
-from mangum import Mangum  # MUST wrap FastAPI for serverless
 
-# Initialize FastAPI
 app = FastAPI()
 
-# Allow CORS from all origins
+# Enable CORS for frontend calls
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,7 +14,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Helper functions
+# --- Helpers ---
 def route_message(message: str) -> str:
     lower = message.lower()
     if "country" in lower:
@@ -34,11 +32,12 @@ def extract_country(message: str) -> str:
 def extract_name(message: str) -> str:
     return message.split()[-1]
 
-# Chat endpoint
+# --- Route ---
 @app.post("/chat")
 async def chat_endpoint(req: Request):
     data = await req.json()
     message = data.get("message", "").strip()
+
     if not message:
         return {"response": "Please enter a message."}
 
@@ -52,10 +51,10 @@ async def chat_endpoint(req: Request):
             if r.status_code == 200:
                 c = r.json()[0]
                 response_text = (
-                    f"🌎 Country: {c.get('name', {}).get('common', country)}\n"
-                    f"Capital: {', '.join(c.get('capital', ['N/A']))}\n"
-                    f"Region: {c.get('region', 'N/A')}\n"
-                    f"Population: {c.get('population', 'N/A'):,}\n"
+                    f"Country: {c.get('name', {}).get('common', country)} "
+                    f"Capital: {', '.join(c.get('capital', ['N/A']))} "
+                    f"Region: {c.get('region', 'N/A')} "
+                    f"Population: {c.get('population', 'N/A'):,} "
                 )
             else:
                 response_text = f"Sorry, I couldn't find '{country}'."
@@ -68,8 +67,10 @@ async def chat_endpoint(req: Request):
                 if not data.get("country"):
                     response_text = f"I couldn’t predict the ethnicity for '{name}'."
                 else:
-                    probs = [f"{c['country_id']} ({c['probability']*100:.1f}%)"
-                             for c in data["country"]]
+                    probs = [
+                        f"{c['country_id']} ({c['probability']*100:.1f}%)"
+                        for c in data["country"]
+                    ]
                     response_text = f"🔠 {name.title()} is most likely associated with: " + ", ".join(probs)
             else:
                 response_text = "Could not fetch ethnicity data."
@@ -79,6 +80,3 @@ async def chat_endpoint(req: Request):
         response_text = f"⚠️ Error: {str(e)}"
 
     return {"response": response_text}
-
-# --- Wrap FastAPI app for serverless Vercel ---
-handler = Mangum(app)
